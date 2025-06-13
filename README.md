@@ -106,7 +106,7 @@ Au sein de l'équipe d'intelligence d'affaires de Beneva, mon rôle consiste à 
 **Employeur :** La Financière Agricole du Québec
 
 **Description de la réalisation :**
-La Financière Agricole du Québec étant une structure où les professionnels exercent des rôles multiples dans un contexte SAFe Agile, mon expérience antérieure et mes compétences en Infrastructure as Code, combinées à mon rôle de DBA et d'architecte, m'ont permis de mettre en œuvre plusieurs composants technologiques et pratiques innovantes au sein de l'organisation. L'approche agile adoptée a facilité la collaboration inter-équipes et l'adaptation rapide aux besoins changeants de l'entreprise.
+La Financière Agricole du Québec étant une structure où les professionnels exercent des rôles multiples dans un contexte de transformation Agile, mon expérience antérieure et mes compétences en Infrastructure as Code, combinées à mon rôle de DBA et d'architecte, m'ont permis de mettre en œuvre plusieurs composants technologiques et pratiques innovantes au sein de l'organisation. L'approche agile adoptée a facilité la collaboration inter-équipes et l'adaptation rapide aux besoins changeants de l'entreprise.
 
 **Rôles et responsabilités :**
 
@@ -133,7 +133,7 @@ La Financière Agricole du Québec étant une structure où les professionnels e
 **Employeur :** Revenu Québec
 
 **Description de la réalisation :**
-Au sein de l'équipe d'automatisation évoluant dans un environnement SAFe Agile, mon rôle consistait à créer, maintenir et faire évoluer les projets de contrôle Puppet gérant plus de 2000 serveurs de l'organisation. Le développement de ces projets de contrôle respectait les meilleures pratiques du développement logiciel agile, incluant l'intégration continue et les cycles de livraison courts. Mes compétences en infrastructure et ma connaissance des systèmes d'exploitation Linux m'ont permis de prendre en charge l'administration et la mise à niveau des serveurs Puppet de la version 6 vers la version 7, en appliquant les principes de livraison continue propres à SAFe.
+Au sein de l'équipe d'automatisation évoluant dans un environnement SAFe Agile, mon rôle consistait à créer, maintenir et faire évoluer les projets de contrôle Puppet gérant plus de 2000 serveurs de l'organisation. Le développement de ces projets de contrôle respectait les meilleures pratiques du développement logiciel agile, incluant l'intégration continue et les cycles de livraison courts. Mes compétences en infrastructure et ma connaissance des systèmes d'exploitation Linux m'ont permis de prendre en charge l'administration et la mise à niveau des serveurs Puppet de la version 6 vers la version 7, en appliquant les principes de livraison continue propres aux pratiques DevOps.
 
 **Rôles et responsabilités :**
 - Automatisation de la configuration des plateformes avec Puppet, incluant l'entretien et la conception de projets de contrôle pour les plateformes Linux avec pile logicielle Typo3 (Apache, PHP, Varnish, Redis, MariaDB)
