@@ -1,55 +1,87 @@
-name: Generate CV Release
+name: Generate CV from Template
 
 on:
   push:
-    branches: [main]
-
-permissions:
-  contents: write
-  pull-requests: write
+    paths:
+      - 'CV/*.md'              # Se déclenche sur les changements des fichiers .md dans CV/
+      - 'Template/Cv_modern.html'  # Se déclenche aussi sur les changements du template
+    branches:
+      - main
 
 jobs:
-  generate:
+  generate-cv:
     runs-on: ubuntu-latest
+    
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2    # Pour comparer avec le commit précédent
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
       with:
         python-version: '3.x'
     
-    - name: Install anthropic
-      run: pip install anthropic
+    - name: Install dependencies
+      run: |
+        pip install anthropic
     
-    - name: Generate CVs
+    - name: Create Output directory if not exists
+      run: mkdir -p Output
+    
+    - name: Detect changed CV files
+      id: changed-files
+      run: |
+        # Vérifier si le template a changé
+        TEMPLATE_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^Template/Cv_modern\.html
+    
+    - name: Generate CV files with Claude
+      if: steps.changed-files.outputs.changed_files != ''
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
       run: |
         python << 'EOF'
-        import anthropic, os, glob, hashlib
+        import anthropic
+        import os
+        import hashlib
         from pathlib import Path
         
-        # Créer répertoire Output
-        os.makedirs('Output', exist_ok=True)
+        def read_file(filepath):
+            """Lit un fichier avec gestion d'erreur."""
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as e:
+                print(f"❌ Erreur lecture {filepath}: {e}")
+                return None
         
-        # Lire template
-        with open('Template/Cv_modern.html', 'r', encoding='utf-8') as f:
-            template = f.read()
+        def write_file(filepath, content):
+            """Écrit un fichier."""
+            try:
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                return True
+            except Exception as e:
+                print(f"❌ Erreur écriture {filepath}: {e}")
+                return False
         
-        client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
-        files_generated = []
+        def file_hash(filepath):
+            """Calcule le hash MD5 d'un fichier."""
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return hashlib.md5(f.read().encode()).hexdigest()
+            except:
+                return None
         
-        # Traiter tous les CV
-        for cv_file in glob.glob('CV/*.md'):
-            with open(cv_file, 'r', encoding='utf-8') as f:
-                cv_content = f.read()
-            
-            # Générer avec Claude
-            response = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=4000,
-                messages=[{
-                    "role": "user",
-                    "content": f" Tu es un expert en génération de CV professionnel. Je vais te donner un CV en markdown et un template HTML moderne.
+        def generate_cv_with_claude(cv_content, template_content, cv_filename):
+            """Génère le CV avec Claude."""
+            try:
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+                
+                prompt = f"""
+                Tu es un expert en génération de CV professionnel. Je vais te donner un CV en markdown et un template HTML moderne.
                 
                 **CV en Markdown ({cv_filename}) :**
                 ```markdown
@@ -71,45 +103,1004 @@ jobs:
                 7. Préserve tous les styles CSS et la mise en page du template
                 
                 **Très important :** Réponds uniquement avec le code HTML final complet, sans explications, sans balises de code markdown, juste le HTML pur.
-                """"
-                }]
-            )
-            
-            html = response.content[0].text.strip()
-            if html.startswith('```'):
-                html = html.split('```')[1].split('```')[0].strip()
-                if html.startswith('html'):
-                    html = html[4:].strip()
-            
-            # Sauvegarder
-            output_file = f"Output/{Path(cv_file).stem}.html"
-            with open(output_file, 'w', encoding='utf-8') as f:
-                f.write(html)
-            files_generated.append(output_file)
-            print(f"✅ Généré: {output_file}")
+                """
+                
+                response = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=4000,
+                    messages=[{
+                        "role": "user",
+                        "content": prompt
+                    }]
+                )
+                
+                generated_html = response.content[0].text.strip()
+                
+                # Nettoyage du contenu au cas où Claude ajouterait des balises
+                if generated_html.startswith('```html'):
+                    generated_html = generated_html.split('```html')[1].split('```')[0].strip()
+                elif generated_html.startswith('```'):
+                    generated_html = generated_html.split('```')[1].split('```')[0].strip()
+                
+                return generated_html
+                
+            except Exception as e:
+                print(f"❌ Erreur Claude API: {e}")
+                return None
         
-        # Sauvegarder liste des fichiers pour la release
-        with open('/tmp/release_files.txt', 'w') as f:
-            f.write('\n'.join(files_generated))
+        # Récupérer les fichiers modifiés
+        changed_files = os.getenv('CHANGED_FILES', '').strip()
+        if not changed_files:
+            print("Aucun fichier CV à traiter")
+            exit(0)
+        
+        # Déterminer si c'est un changement de template ou de CV
+        file_list = [f.strip() for f in changed_files.split('\n') if f.strip()]
+        is_template_change = any('Template/' in f for f in file_list) or len([f for f in file_list if f.startswith('CV/')]) > 1
+        
+        if is_template_change:
+            print(f"🎨 Régénération complète suite à modification du template")
+            print(f"📝 {len([f for f in file_list if f.endswith('.md')])} fichiers CV à traiter:")
+        else:
+            print(f"📝 Fichiers CV modifiés détectés:")
+        
+        for f in file_list:
+            if f.endswith('.md'):
+                print(f"  - {f}")
+        
+        # Lire le template
+        print("📖 Lecture du template...")
+        template_content = read_file('Template/Cv_modern.html')
+        if not template_content:
+            print("❌ Impossible de lire le template")
+            exit(1)
+        
+        # Traiter chaque fichier modifié
+        files_generated = []
+        
+        for cv_file in file_list:
+            if not cv_file.endswith('.md'):
+                continue
+                
+            print(f"\n🔄 Traitement de {cv_file}...")
+            
+            # Lire le contenu du CV
+            cv_content = read_file(cv_file)
+            if not cv_content:
+                print(f"❌ Impossible de lire {cv_file}")
+                continue
+            
+            # Générer le nom du fichier de sortie
+            cv_filename = Path(cv_file).stem  # Nom sans extension
+            output_file = f"Output/{cv_filename}.html"
+            
+            print(f"📄 Génération: {cv_file} → {output_file}")
+            
+            # Générer le CV avec Claude
+            generated_html = generate_cv_with_claude(cv_content, template_content, cv_filename)
+            if not generated_html:
+                print(f"❌ Échec génération pour {cv_file}")
+                continue
+            
+            # Vérifier si le fichier existe déjà et s'il est différent
+            needs_update = True
+            if os.path.exists(output_file):
+                # Comparer les hash pour voir si le contenu a changé
+                old_hash = file_hash(output_file)
+                new_hash = hashlib.md5(generated_html.encode()).hexdigest()
+                
+                if old_hash == new_hash:
+                    print(f"✅ {output_file} est déjà à jour")
+                    needs_update = False
+                else:
+                    print(f"🔄 {output_file} sera mis à jour (contenu différent)")
+            else:
+                print(f"✨ Création de {output_file}")
+            
+            if needs_update:
+                if write_file(output_file, generated_html):
+                    files_generated.append(output_file)
+                    print(f"✅ {output_file} généré avec succès")
+        
+        # Sauvegarder la liste des fichiers générés pour l'étape suivante
+        if files_generated:
+            with open('/tmp/files_generated.txt', 'w') as f:
+                f.write('\n'.join(files_generated))
+            print(f"\n🎉 {len(files_generated)} fichier(s) CV généré(s) !")
+        else:
+            print("\n💡 Aucun fichier à mettre à jour")
         EOF
     
-    - name: Create Release
-      if: success()
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: cv-${{ github.run_number }}-${{ github.sha }}
-        name: "CV Release - ${{ github.event.head_commit.message }}"
-        body: |
-          🤖 CV automatiquement générés
+    - name: Commit and push changes
+      run: |
+        # Vérifier s'il y a des fichiers générés
+        if [ -f "/tmp/files_generated.txt" ]; then
+          FILES_GENERATED=$(cat /tmp/files_generated.txt)
           
-          **Commit:** ${{ github.sha }}
-          **Message:** ${{ github.event.head_commit.message }}
-          **Date:** ${{ github.event.head_commit.timestamp }}
-          
-          Fichiers générés:
-          $(cat /tmp/release_files.txt | sed 's/Output\//- /' | sed 's/\.html/ (HTML)/')
-        files: Output/*.html
-        draft: false
-        prerelease: false
+          if [ -n "$FILES_GENERATED" ]; then
+            # Configuration Git
+            git config --local user.email "action@github.com"
+            git config --local user.name "CV Generator Bot"
+            
+            # Ajouter les fichiers générés
+            echo "$FILES_GENERATED" | xargs git add
+            
+            # Détecter le type de changement pour le message de commit
+            TEMPLATE_CHANGED=$(git show --name-only HEAD~1 | grep '^Template/Cv_modern\.html
+            
+            # Commiter et pusher
+            git commit -m "$COMMIT_MSG"
+            git push
+            
+            echo "✅ Changements committés et pushés avec succès !"
+          else
+            echo "💡 Aucun changement à committer"
+          fi
+        else
+          echo "💡 Aucun fichier généré"
+        fi || true)
+        
+        if [ -n "$TEMPLATE_CHANGED" ]; then
+          echo "🎨 Template modifié - Génération de tous les CV"
+          # Si le template a changé, traiter tous les fichiers CV
+          ALL_CV_FILES=$(find CV -name "*.md" -type f | sort)
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$ALL_CV_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        else
+          # Sinon, détecter uniquement les fichiers .md modifiés dans le répertoire CV/
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^CV/.*\.md
+    
+    - name: Generate CV files with Claude
+      if: steps.changed-files.outputs.changed_files != ''
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+      run: |
+        python << 'EOF'
+        import anthropic
+        import os
+        import hashlib
+        from pathlib import Path
+        
+        def read_file(filepath):
+            """Lit un fichier avec gestion d'erreur."""
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as e:
+                print(f"❌ Erreur lecture {filepath}: {e}")
+                return None
+        
+        def write_file(filepath, content):
+            """Écrit un fichier."""
+            try:
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                return True
+            except Exception as e:
+                print(f"❌ Erreur écriture {filepath}: {e}")
+                return False
+        
+        def file_hash(filepath):
+            """Calcule le hash MD5 d'un fichier."""
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return hashlib.md5(f.read().encode()).hexdigest()
+            except:
+                return None
+        
+        def generate_cv_with_claude(cv_content, template_content, cv_filename):
+            """Génère le CV avec Claude."""
+            try:
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+                
+                prompt = f"""
+                Tu es un expert en génération de CV professionnel. Je vais te donner un CV en markdown et un template HTML moderne.
+                
+                **CV en Markdown ({cv_filename}) :**
+                ```markdown
+                {cv_content}
+                ```
+                
+                **Template HTML moderne :**
+                ```html
+                {template_content}
+                ```
+                
+                **Instructions spécifiques :**
+                1. Intègre parfaitement le contenu markdown dans le template HTML
+                2. Convertis le markdown en HTML sémantique (h1, h2, p, ul, li, strong, em, etc.)
+                3. Respecte absolument la structure, les classes CSS et les styles du template
+                4. Assure-toi que les sections du CV s'adaptent aux zones prévues dans le template
+                5. Maintiens l'aspect moderne et professionnel du template
+                6. Génère un HTML valide et bien indenté
+                7. Préserve tous les styles CSS et la mise en page du template
+                
+                **Très important :** Réponds uniquement avec le code HTML final complet, sans explications, sans balises de code markdown, juste le HTML pur.
+                """
+                
+                response = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=4000,
+                    messages=[{
+                        "role": "user",
+                        "content": prompt
+                    }]
+                )
+                
+                generated_html = response.content[0].text.strip()
+                
+                # Nettoyage du contenu au cas où Claude ajouterait des balises
+                if generated_html.startswith('```html'):
+                    generated_html = generated_html.split('```html')[1].split('```')[0].strip()
+                elif generated_html.startswith('```'):
+                    generated_html = generated_html.split('```')[1].split('```')[0].strip()
+                
+                return generated_html
+                
+            except Exception as e:
+                print(f"❌ Erreur Claude API: {e}")
+                return None
+        
+        # Récupérer les fichiers modifiés
+        changed_files = os.getenv('CHANGED_FILES', '').strip()
+        if not changed_files:
+            print("Aucun fichier CV modifié")
+            exit(0)
+        
+        print(f"📝 Fichiers CV modifiés détectés:")
+        file_list = [f.strip() for f in changed_files.split('\n') if f.strip()]
+        
+        # Lire le template
+        print("📖 Lecture du template...")
+        template_content = read_file('Template/Cv_modern.html')
+        if not template_content:
+            print("❌ Impossible de lire le template")
+            exit(1)
+        
+        # Traiter chaque fichier modifié
+        files_generated = []
+        
+        for cv_file in file_list:
+            if not cv_file.endswith('.md'):
+                continue
+                
+            print(f"\n🔄 Traitement de {cv_file}...")
+            
+            # Lire le contenu du CV
+            cv_content = read_file(cv_file)
+            if not cv_content:
+                print(f"❌ Impossible de lire {cv_file}")
+                continue
+            
+            # Générer le nom du fichier de sortie
+            cv_filename = Path(cv_file).stem  # Nom sans extension
+            output_file = f"Output/{cv_filename}.html"
+            
+            print(f"📄 Génération: {cv_file} → {output_file}")
+            
+            # Générer le CV avec Claude
+            generated_html = generate_cv_with_claude(cv_content, template_content, cv_filename)
+            if not generated_html:
+                print(f"❌ Échec génération pour {cv_file}")
+                continue
+            
+            # Vérifier si le fichier existe déjà et s'il est différent
+            needs_update = True
+            if os.path.exists(output_file):
+                # Comparer les hash pour voir si le contenu a changé
+                old_hash = file_hash(output_file)
+                new_hash = hashlib.md5(generated_html.encode()).hexdigest()
+                
+                if old_hash == new_hash:
+                    print(f"✅ {output_file} est déjà à jour")
+                    needs_update = False
+                else:
+                    print(f"🔄 {output_file} sera mis à jour (contenu différent)")
+            else:
+                print(f"✨ Création de {output_file}")
+            
+            if needs_update:
+                if write_file(output_file, generated_html):
+                    files_generated.append(output_file)
+                    print(f"✅ {output_file} généré avec succès")
+        
+        # Sauvegarder la liste des fichiers générés pour l'étape suivante
+        if files_generated:
+            with open('/tmp/files_generated.txt', 'w') as f:
+                f.write('\n'.join(files_generated))
+            print(f"\n🎉 {len(files_generated)} fichier(s) CV généré(s) !")
+        else:
+            print("\n💡 Aucun fichier à mettre à jour")
+        EOF
+    
+    - name: Commit and push changes
+      run: |
+        # Vérifier s'il y a des fichiers générés
+        if [ -f "/tmp/files_generated.txt" ]; then
+          FILES_GENERATED=$(cat /tmp/files_generated.txt)
+          
+          if [ -n "$FILES_GENERATED" ]; then
+            # Configuration Git
+            git config --local user.email "action@github.com"
+            git config --local user.name "CV Generator Bot"
+            
+            # Ajouter les fichiers générés
+            echo "$FILES_GENERATED" | xargs git add
+            
+            # Créer le message de commit avec la liste des fichiers
+            COMMIT_MSG="🤖 Mise à jour automatique des CV
+            
+            Fichiers générés:
+            $(echo "$FILES_GENERATED" | sed 's/^/- /')
+            
+            Généré le $(date '+%Y-%m-%d à %H:%M:%S')"
+            
+            # Commiter et pusher
+            git commit -m "$COMMIT_MSG"
+            git push
+            
+            echo "✅ Changements committés et pushés avec succès !"
+          else
+            echo "💡 Aucun changement à committer"
+          fi
+        else
+          echo "💡 Aucun fichier généré"
+        fi || true)
+          echo "📝 Fichiers CV modifiés: $CHANGED_FILES"
+          
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "changed_files=" >> $GITHUB_OUTPUT
+          fi
+        fi
+    
+    - name: Generate CV files with Claude
+      if: steps.changed-files.outputs.changed_files != ''
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+      run: |
+        python << 'EOF'
+        import anthropic
+        import os
+        import hashlib
+        from pathlib import Path
+        
+        def read_file(filepath):
+            """Lit un fichier avec gestion d'erreur."""
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as e:
+                print(f"❌ Erreur lecture {filepath}: {e}")
+                return None
+        
+        def write_file(filepath, content):
+            """Écrit un fichier."""
+            try:
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                return True
+            except Exception as e:
+                print(f"❌ Erreur écriture {filepath}: {e}")
+                return False
+        
+        def file_hash(filepath):
+            """Calcule le hash MD5 d'un fichier."""
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return hashlib.md5(f.read().encode()).hexdigest()
+            except:
+                return None
+        
+        def generate_cv_with_claude(cv_content, template_content, cv_filename):
+            """Génère le CV avec Claude."""
+            try:
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+                
+                prompt = f"""
+                Tu es un expert en génération de CV professionnel. Je vais te donner un CV en markdown et un template HTML moderne.
+                
+                **CV en Markdown ({cv_filename}) :**
+                ```markdown
+                {cv_content}
+                ```
+                
+                **Template HTML moderne :**
+                ```html
+                {template_content}
+                ```
+                
+                **Instructions spécifiques :**
+                1. Intègre parfaitement le contenu markdown dans le template HTML
+                2. Convertis le markdown en HTML sémantique (h1, h2, p, ul, li, strong, em, etc.)
+                3. Respecte absolument la structure, les classes CSS et les styles du template
+                4. Assure-toi que les sections du CV s'adaptent aux zones prévues dans le template
+                5. Maintiens l'aspect moderne et professionnel du template
+                6. Génère un HTML valide et bien indenté
+                7. Préserve tous les styles CSS et la mise en page du template
+                
+                **Très important :** Réponds uniquement avec le code HTML final complet, sans explications, sans balises de code markdown, juste le HTML pur.
+                """
+                
+                response = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=4000,
+                    messages=[{
+                        "role": "user",
+                        "content": prompt
+                    }]
+                )
+                
+                generated_html = response.content[0].text.strip()
+                
+                # Nettoyage du contenu au cas où Claude ajouterait des balises
+                if generated_html.startswith('```html'):
+                    generated_html = generated_html.split('```html')[1].split('```')[0].strip()
+                elif generated_html.startswith('```'):
+                    generated_html = generated_html.split('```')[1].split('```')[0].strip()
+                
+                return generated_html
+                
+            except Exception as e:
+                print(f"❌ Erreur Claude API: {e}")
+                return None
+        
+        # Récupérer les fichiers modifiés
+        changed_files = os.getenv('CHANGED_FILES', '').strip()
+        if not changed_files:
+            print("Aucun fichier CV modifié")
+            exit(0)
+        
+        print(f"📝 Fichiers CV modifiés détectés:")
+        file_list = [f.strip() for f in changed_files.split('\n') if f.strip()]
+        
+        # Lire le template
+        print("📖 Lecture du template...")
+        template_content = read_file('Template/Cv_modern.html')
+        if not template_content:
+            print("❌ Impossible de lire le template")
+            exit(1)
+        
+        # Traiter chaque fichier modifié
+        files_generated = []
+        
+        for cv_file in file_list:
+            if not cv_file.endswith('.md'):
+                continue
+                
+            print(f"\n🔄 Traitement de {cv_file}...")
+            
+            # Lire le contenu du CV
+            cv_content = read_file(cv_file)
+            if not cv_content:
+                print(f"❌ Impossible de lire {cv_file}")
+                continue
+            
+            # Générer le nom du fichier de sortie
+            cv_filename = Path(cv_file).stem  # Nom sans extension
+            output_file = f"Output/{cv_filename}.html"
+            
+            print(f"📄 Génération: {cv_file} → {output_file}")
+            
+            # Générer le CV avec Claude
+            generated_html = generate_cv_with_claude(cv_content, template_content, cv_filename)
+            if not generated_html:
+                print(f"❌ Échec génération pour {cv_file}")
+                continue
+            
+            # Vérifier si le fichier existe déjà et s'il est différent
+            needs_update = True
+            if os.path.exists(output_file):
+                # Comparer les hash pour voir si le contenu a changé
+                old_hash = file_hash(output_file)
+                new_hash = hashlib.md5(generated_html.encode()).hexdigest()
+                
+                if old_hash == new_hash:
+                    print(f"✅ {output_file} est déjà à jour")
+                    needs_update = False
+                else:
+                    print(f"🔄 {output_file} sera mis à jour (contenu différent)")
+            else:
+                print(f"✨ Création de {output_file}")
+            
+            if needs_update:
+                if write_file(output_file, generated_html):
+                    files_generated.append(output_file)
+                    print(f"✅ {output_file} généré avec succès")
+        
+        # Sauvegarder la liste des fichiers générés pour l'étape suivante
+        if files_generated:
+            with open('/tmp/files_generated.txt', 'w') as f:
+                f.write('\n'.join(files_generated))
+            print(f"\n🎉 {len(files_generated)} fichier(s) CV généré(s) !")
+        else:
+            print("\n💡 Aucun fichier à mettre à jour")
+        EOF
+    
+    - name: Commit and push changes
+      run: |
+        # Vérifier s'il y a des fichiers générés
+        if [ -f "/tmp/files_generated.txt" ]; then
+          FILES_GENERATED=$(cat /tmp/files_generated.txt)
+          
+          if [ -n "$FILES_GENERATED" ]; then
+            # Configuration Git
+            git config --local user.email "action@github.com"
+            git config --local user.name "CV Generator Bot"
+            
+            # Ajouter les fichiers générés
+            echo "$FILES_GENERATED" | xargs git add
+            
+            # Créer le message de commit avec la liste des fichiers
+            COMMIT_MSG="🤖 Mise à jour automatique des CV
+            
+            Fichiers générés:
+            $(echo "$FILES_GENERATED" | sed 's/^/- /')
+            
+            Généré le $(date '+%Y-%m-%d à %H:%M:%S')"
+            
+            # Commiter et pusher
+            git commit -m "$COMMIT_MSG"
+            git push
+            
+            echo "✅ Changements committés et pushés avec succès !"
+          else
+            echo "💡 Aucun changement à committer"
+          fi
+        else
+          echo "💡 Aucun fichier généré"
+        fi || true)
+            
+            if [ -n "$TEMPLATE_CHANGED" ]; then
+              # Changement de template
+              COMMIT_MSG="🎨 Régénération automatique des CV suite à modification du template
+            
+            Template mis à jour: Template/Cv_modern.html
+            Fichiers régénérés:
+            $(echo "$FILES_GENERATED" | sed 's/^/- /')
+            
+            Généré le $(date '+%Y-%m-%d à %H:%M:%S')"
+            else
+              # Changement de CV
+              COMMIT_MSG="🤖 Mise à jour automatique des CV
+            
+            Fichiers générés:
+            $(echo "$FILES_GENERATED" | sed 's/^/- /')
+            
+            Généré le $(date '+%Y-%m-%d à %H:%M:%S')"
+            fi
+            
+            # Commiter et pusher
+            git commit -m "$COMMIT_MSG"
+            git push
+            
+            echo "✅ Changements committés et pushés avec succès !"
+          else
+            echo "💡 Aucun changement à committer"
+          fi
+        else
+          echo "💡 Aucun fichier généré"
+        fi || true)
+        
+        if [ -n "$TEMPLATE_CHANGED" ]; then
+          echo "🎨 Template modifié - Génération de tous les CV"
+          # Si le template a changé, traiter tous les fichiers CV
+          ALL_CV_FILES=$(find CV -name "*.md" -type f | sort)
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$ALL_CV_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        else
+          # Sinon, détecter uniquement les fichiers .md modifiés dans le répertoire CV/
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^CV/.*\.md
+    
+    - name: Generate CV files with Claude
+      if: steps.changed-files.outputs.changed_files != ''
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+      run: |
+        python << 'EOF'
+        import anthropic
+        import os
+        import hashlib
+        from pathlib import Path
+        
+        def read_file(filepath):
+            """Lit un fichier avec gestion d'erreur."""
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as e:
+                print(f"❌ Erreur lecture {filepath}: {e}")
+                return None
+        
+        def write_file(filepath, content):
+            """Écrit un fichier."""
+            try:
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                return True
+            except Exception as e:
+                print(f"❌ Erreur écriture {filepath}: {e}")
+                return False
+        
+        def file_hash(filepath):
+            """Calcule le hash MD5 d'un fichier."""
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return hashlib.md5(f.read().encode()).hexdigest()
+            except:
+                return None
+        
+        def generate_cv_with_claude(cv_content, template_content, cv_filename):
+            """Génère le CV avec Claude."""
+            try:
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+                
+                prompt = f"""
+                Tu es un expert en génération de CV professionnel. Je vais te donner un CV en markdown et un template HTML moderne.
+                
+                **CV en Markdown ({cv_filename}) :**
+                ```markdown
+                {cv_content}
+                ```
+                
+                **Template HTML moderne :**
+                ```html
+                {template_content}
+                ```
+                
+                **Instructions spécifiques :**
+                1. Intègre parfaitement le contenu markdown dans le template HTML
+                2. Convertis le markdown en HTML sémantique (h1, h2, p, ul, li, strong, em, etc.)
+                3. Respecte absolument la structure, les classes CSS et les styles du template
+                4. Assure-toi que les sections du CV s'adaptent aux zones prévues dans le template
+                5. Maintiens l'aspect moderne et professionnel du template
+                6. Génère un HTML valide et bien indenté
+                7. Préserve tous les styles CSS et la mise en page du template
+                
+                **Très important :** Réponds uniquement avec le code HTML final complet, sans explications, sans balises de code markdown, juste le HTML pur.
+                """
+                
+                response = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=4000,
+                    messages=[{
+                        "role": "user",
+                        "content": prompt
+                    }]
+                )
+                
+                generated_html = response.content[0].text.strip()
+                
+                # Nettoyage du contenu au cas où Claude ajouterait des balises
+                if generated_html.startswith('```html'):
+                    generated_html = generated_html.split('```html')[1].split('```')[0].strip()
+                elif generated_html.startswith('```'):
+                    generated_html = generated_html.split('```')[1].split('```')[0].strip()
+                
+                return generated_html
+                
+            except Exception as e:
+                print(f"❌ Erreur Claude API: {e}")
+                return None
+        
+        # Récupérer les fichiers modifiés
+        changed_files = os.getenv('CHANGED_FILES', '').strip()
+        if not changed_files:
+            print("Aucun fichier CV modifié")
+            exit(0)
+        
+        print(f"📝 Fichiers CV modifiés détectés:")
+        file_list = [f.strip() for f in changed_files.split('\n') if f.strip()]
+        
+        # Lire le template
+        print("📖 Lecture du template...")
+        template_content = read_file('Template/Cv_modern.html')
+        if not template_content:
+            print("❌ Impossible de lire le template")
+            exit(1)
+        
+        # Traiter chaque fichier modifié
+        files_generated = []
+        
+        for cv_file in file_list:
+            if not cv_file.endswith('.md'):
+                continue
+                
+            print(f"\n🔄 Traitement de {cv_file}...")
+            
+            # Lire le contenu du CV
+            cv_content = read_file(cv_file)
+            if not cv_content:
+                print(f"❌ Impossible de lire {cv_file}")
+                continue
+            
+            # Générer le nom du fichier de sortie
+            cv_filename = Path(cv_file).stem  # Nom sans extension
+            output_file = f"Output/{cv_filename}.html"
+            
+            print(f"📄 Génération: {cv_file} → {output_file}")
+            
+            # Générer le CV avec Claude
+            generated_html = generate_cv_with_claude(cv_content, template_content, cv_filename)
+            if not generated_html:
+                print(f"❌ Échec génération pour {cv_file}")
+                continue
+            
+            # Vérifier si le fichier existe déjà et s'il est différent
+            needs_update = True
+            if os.path.exists(output_file):
+                # Comparer les hash pour voir si le contenu a changé
+                old_hash = file_hash(output_file)
+                new_hash = hashlib.md5(generated_html.encode()).hexdigest()
+                
+                if old_hash == new_hash:
+                    print(f"✅ {output_file} est déjà à jour")
+                    needs_update = False
+                else:
+                    print(f"🔄 {output_file} sera mis à jour (contenu différent)")
+            else:
+                print(f"✨ Création de {output_file}")
+            
+            if needs_update:
+                if write_file(output_file, generated_html):
+                    files_generated.append(output_file)
+                    print(f"✅ {output_file} généré avec succès")
+        
+        # Sauvegarder la liste des fichiers générés pour l'étape suivante
+        if files_generated:
+            with open('/tmp/files_generated.txt', 'w') as f:
+                f.write('\n'.join(files_generated))
+            print(f"\n🎉 {len(files_generated)} fichier(s) CV généré(s) !")
+        else:
+            print("\n💡 Aucun fichier à mettre à jour")
+        EOF
+    
+    - name: Commit and push changes
+      run: |
+        # Vérifier s'il y a des fichiers générés
+        if [ -f "/tmp/files_generated.txt" ]; then
+          FILES_GENERATED=$(cat /tmp/files_generated.txt)
+          
+          if [ -n "$FILES_GENERATED" ]; then
+            # Configuration Git
+            git config --local user.email "action@github.com"
+            git config --local user.name "CV Generator Bot"
+            
+            # Ajouter les fichiers générés
+            echo "$FILES_GENERATED" | xargs git add
+            
+            # Créer le message de commit avec la liste des fichiers
+            COMMIT_MSG="🤖 Mise à jour automatique des CV
+            
+            Fichiers générés:
+            $(echo "$FILES_GENERATED" | sed 's/^/- /')
+            
+            Généré le $(date '+%Y-%m-%d à %H:%M:%S')"
+            
+            # Commiter et pusher
+            git commit -m "$COMMIT_MSG"
+            git push
+            
+            echo "✅ Changements committés et pushés avec succès !"
+          else
+            echo "💡 Aucun changement à committer"
+          fi
+        else
+          echo "💡 Aucun fichier généré"
+        fi || true)
+          echo "📝 Fichiers CV modifiés: $CHANGED_FILES"
+          
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "changed_files=" >> $GITHUB_OUTPUT
+          fi
+        fi
+    
+    - name: Generate CV files with Claude
+      if: steps.changed-files.outputs.changed_files != ''
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+      run: |
+        python << 'EOF'
+        import anthropic
+        import os
+        import hashlib
+        from pathlib import Path
+        
+        def read_file(filepath):
+            """Lit un fichier avec gestion d'erreur."""
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as e:
+                print(f"❌ Erreur lecture {filepath}: {e}")
+                return None
+        
+        def write_file(filepath, content):
+            """Écrit un fichier."""
+            try:
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                return True
+            except Exception as e:
+                print(f"❌ Erreur écriture {filepath}: {e}")
+                return False
+        
+        def file_hash(filepath):
+            """Calcule le hash MD5 d'un fichier."""
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return hashlib.md5(f.read().encode()).hexdigest()
+            except:
+                return None
+        
+        def generate_cv_with_claude(cv_content, template_content, cv_filename):
+            """Génère le CV avec Claude."""
+            try:
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+                
+                prompt = f"""
+                Tu es un expert en génération de CV professionnel. Je vais te donner un CV en markdown et un template HTML moderne.
+                
+                **CV en Markdown ({cv_filename}) :**
+                ```markdown
+                {cv_content}
+                ```
+                
+                **Template HTML moderne :**
+                ```html
+                {template_content}
+                ```
+                
+                **Instructions spécifiques :**
+                1. Intègre parfaitement le contenu markdown dans le template HTML
+                2. Convertis le markdown en HTML sémantique (h1, h2, p, ul, li, strong, em, etc.)
+                3. Respecte absolument la structure, les classes CSS et les styles du template
+                4. Assure-toi que les sections du CV s'adaptent aux zones prévues dans le template
+                5. Maintiens l'aspect moderne et professionnel du template
+                6. Génère un HTML valide et bien indenté
+                7. Préserve tous les styles CSS et la mise en page du template
+                
+                **Très important :** Réponds uniquement avec le code HTML final complet, sans explications, sans balises de code markdown, juste le HTML pur.
+                """
+                
+                response = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=4000,
+                    messages=[{
+                        "role": "user",
+                        "content": prompt
+                    }]
+                )
+                
+                generated_html = response.content[0].text.strip()
+                
+                # Nettoyage du contenu au cas où Claude ajouterait des balises
+                if generated_html.startswith('```html'):
+                    generated_html = generated_html.split('```html')[1].split('```')[0].strip()
+                elif generated_html.startswith('```'):
+                    generated_html = generated_html.split('```')[1].split('```')[0].strip()
+                
+                return generated_html
+                
+            except Exception as e:
+                print(f"❌ Erreur Claude API: {e}")
+                return None
+        
+        # Récupérer les fichiers modifiés
+        changed_files = os.getenv('CHANGED_FILES', '').strip()
+        if not changed_files:
+            print("Aucun fichier CV modifié")
+            exit(0)
+        
+        print(f"📝 Fichiers CV modifiés détectés:")
+        file_list = [f.strip() for f in changed_files.split('\n') if f.strip()]
+        
+        # Lire le template
+        print("📖 Lecture du template...")
+        template_content = read_file('Template/Cv_modern.html')
+        if not template_content:
+            print("❌ Impossible de lire le template")
+            exit(1)
+        
+        # Traiter chaque fichier modifié
+        files_generated = []
+        
+        for cv_file in file_list:
+            if not cv_file.endswith('.md'):
+                continue
+                
+            print(f"\n🔄 Traitement de {cv_file}...")
+            
+            # Lire le contenu du CV
+            cv_content = read_file(cv_file)
+            if not cv_content:
+                print(f"❌ Impossible de lire {cv_file}")
+                continue
+            
+            # Générer le nom du fichier de sortie
+            cv_filename = Path(cv_file).stem  # Nom sans extension
+            output_file = f"Output/{cv_filename}.html"
+            
+            print(f"📄 Génération: {cv_file} → {output_file}")
+            
+            # Générer le CV avec Claude
+            generated_html = generate_cv_with_claude(cv_content, template_content, cv_filename)
+            if not generated_html:
+                print(f"❌ Échec génération pour {cv_file}")
+                continue
+            
+            # Vérifier si le fichier existe déjà et s'il est différent
+            needs_update = True
+            if os.path.exists(output_file):
+                # Comparer les hash pour voir si le contenu a changé
+                old_hash = file_hash(output_file)
+                new_hash = hashlib.md5(generated_html.encode()).hexdigest()
+                
+                if old_hash == new_hash:
+                    print(f"✅ {output_file} est déjà à jour")
+                    needs_update = False
+                else:
+                    print(f"🔄 {output_file} sera mis à jour (contenu différent)")
+            else:
+                print(f"✨ Création de {output_file}")
+            
+            if needs_update:
+                if write_file(output_file, generated_html):
+                    files_generated.append(output_file)
+                    print(f"✅ {output_file} généré avec succès")
+        
+        # Sauvegarder la liste des fichiers générés pour l'étape suivante
+        if files_generated:
+            with open('/tmp/files_generated.txt', 'w') as f:
+                f.write('\n'.join(files_generated))
+            print(f"\n🎉 {len(files_generated)} fichier(s) CV généré(s) !")
+        else:
+            print("\n💡 Aucun fichier à mettre à jour")
+        EOF
+    
+    - name: Commit and push changes
+      run: |
+        # Vérifier s'il y a des fichiers générés
+        if [ -f "/tmp/files_generated.txt" ]; then
+          FILES_GENERATED=$(cat /tmp/files_generated.txt)
+          
+          if [ -n "$FILES_GENERATED" ]; then
+            # Configuration Git
+            git config --local user.email "action@github.com"
+            git config --local user.name "CV Generator Bot"
+            
+            # Ajouter les fichiers générés
+            echo "$FILES_GENERATED" | xargs git add
+            
+            # Créer le message de commit avec la liste des fichiers
+            COMMIT_MSG="🤖 Mise à jour automatique des CV
+            
+            Fichiers générés:
+            $(echo "$FILES_GENERATED" | sed 's/^/- /')
+            
+            Généré le $(date '+%Y-%m-%d à %H:%M:%S')"
+            
+            # Commiter et pusher
+            git commit -m "$COMMIT_MSG"
+            git push
+            
+            echo "✅ Changements committés et pushés avec succès !"
+          else
+            echo "💡 Aucun changement à committer"
+          fi
+        else
+          echo "💡 Aucun fichier généré"
+        fi
