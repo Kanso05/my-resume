@@ -1,4 +1,4 @@
-name: Generate CV
+name: Generate CV Release
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
             template = f.read()
         
         client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
-        files_changed = []
+        files_generated = []
         
         # Traiter tous les CV
         for cv_file in glob.glob('CV/*.md'):
@@ -61,34 +61,35 @@ jobs:
                 if html.startswith('html'):
                     html = html[4:].strip()
             
-            # Sauvegarder si différent
+            # Sauvegarder
             output_file = f"Output/{Path(cv_file).stem}.html"
-            
-            needs_update = True
-            if os.path.exists(output_file):
-                with open(output_file, 'r', encoding='utf-8') as f:
-                    old_content = f.read()
-                if hashlib.md5(old_content.encode()).hexdigest() == hashlib.md5(html.encode()).hexdigest():
-                    needs_update = False
-            
-            if needs_update:
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    f.write(html)
-                files_changed.append(output_file)
-                print(f"✅ Généré: {output_file}")
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(html)
+            files_generated.append(output_file)
+            print(f"✅ Généré: {output_file}")
         
-        # Sauvegarder liste des fichiers changés
-        if files_changed:
-            with open('/tmp/changed.txt', 'w') as f:
-                f.write('\n'.join(files_changed))
+        # Sauvegarder liste des fichiers pour la release
+        with open('/tmp/release_files.txt', 'w') as f:
+            f.write('\n'.join(files_generated))
         EOF
     
-    - name: Commit changes
-      run: |
-        if [ -f "/tmp/changed.txt" ]; then
-          git config --local user.email "action@github.com"
-          git config --local user.name "CV Bot"
-          git add Output/*.html
-          git commit -m "🤖 CV mis à jour - $(date '+%Y-%m-%d %H:%M')" || exit 0
-          git push
-        fi
+    - name: Create Release
+      if: success()
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: cv-${{ github.run_number }}-${{ github.sha }}
+        name: "CV Release - ${{ github.event.head_commit.message }}"
+        body: |
+          🤖 CV automatiquement générés
+          
+          **Commit:** ${{ github.sha }}
+          **Message:** ${{ github.event.head_commit.message }}
+          **Date:** ${{ github.event.head_commit.timestamp }}
+          
+          Fichiers générés:
+          $(cat /tmp/release_files.txt | sed 's/Output\//- /' | sed 's/\.html/ (HTML)/')
+        files: Output/*.html
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
