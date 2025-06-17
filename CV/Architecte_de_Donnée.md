@@ -381,4 +381,4 @@ Projet de refonte du système de gestion financière de l'organisme vers le prog
 
 ---
 
-*Version 0.0.4 Révisé le 2025-06-17*
+*Version 0.0.5 Révisé le 2025-06-17*
