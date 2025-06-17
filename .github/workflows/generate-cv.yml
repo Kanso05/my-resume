@@ -34,7 +34,7 @@ jobs:
       id: changed-files
       run: |
         # Vérifier si le template a changé
-        TEMPLATE_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep ".html")
+        TEMPLATE_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^Template/Cv_modern\.html
     
     - name: Generate CV files with Claude
       if: steps.changed-files.outputs.changed_files != ''
@@ -81,7 +81,7 @@ jobs:
                 client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
                 
                 prompt = f"""
-                Tu es un expert en génération de CV professionnel. Voici un CV détaillé avec tableaux et sections techniques.
+                Tu es un expert en génération de CV professionnel français. Voici un CV détaillé avec tableaux et sections techniques.
                 
                 **CV Markdown ({cv_filename}) :**
                 ```markdown
@@ -113,7 +113,7 @@ jobs:
                 
                 response = client.messages.create(
                     model="claude-sonnet-4-20250514",
-                    max_tokens=16000,  # Augmenté pour les CV longs
+                    max_tokens=8000,  # Augmenté pour les CV longs
                     messages=[{
                         "role": "user",
                         "content": prompt
@@ -232,7 +232,7 @@ jobs:
             echo "$FILES_GENERATED" | xargs git add
             
             # Détecter le type de changement pour le message de commit
-            TEMPLATE_CHANGED=$(git show --name-only HEAD~1 | grep ".html")
+            TEMPLATE_CHANGED=$(git show --name-only HEAD~1 | grep '^Template/Cv_modern\.html
             
             # Commiter et pusher
             git commit -m "$COMMIT_MSG"
@@ -255,7 +255,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
         else
           # Sinon, détecter uniquement les fichiers .md modifiés dans le répertoire CV/
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep ".md")
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^CV/.*\.md
     
     - name: Generate CV files with Claude
       if: steps.changed-files.outputs.changed_files != ''
@@ -703,7 +703,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
         else
           # Sinon, détecter uniquement les fichiers .md modifiés dans le répertoire CV/
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep ".md")
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^CV/.*\.md
     
     - name: Generate CV files with Claude
       if: steps.changed-files.outputs.changed_files != ''
