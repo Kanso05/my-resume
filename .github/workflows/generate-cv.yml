@@ -108,6 +108,32 @@ jobs:
           else
             echo "💡 Aucun changement à committer"
           fi
-        else
-          echo "💡 Aucun fichier généré"
+    - name: Create Release with generated CV files
+      if: success() && hashFiles('/tmp/files_generated.txt') != ''
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: cv-${{ github.run_number }}-${{ github.sha }}
+        name: "CV Release - ${{ github.event.head_commit.message }}"
+        body: |
+          🤖 Génération automatique de CV
+          
+          **Commit:** ${{ github.sha }}
+          **Date:** ${{ github.event.head_commit.timestamp }}
+          **Message:** ${{ github.event.head_commit.message }}
+          
+          Fichiers générés:
+          ${{ steps.get-files.outputs.files_list }}
+        files: Output/*.html
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Get generated files list
+      id: get-files
+      if: hashFiles('/tmp/files_generated.txt') != ''
+      run: |
+        if [ -f "/tmp/files_generated.txt" ]; then
+          FILES_LIST=$(cat /tmp/files_generated.txt | sed 's/^/- /' | tr '\n' ' ')
+          echo "files_list=$FILES_LIST" >> $GITHUB_OUTPUT
         fi
