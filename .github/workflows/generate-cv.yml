@@ -49,13 +49,29 @@ jobs:
                 max_tokens=4000,
                 messages=[{
                     "role": "user",
-                    "content": f"""Intègre ce CV markdown dans le template HTML. Réponds uniquement avec le HTML final complet.
-
-        CV Markdown:
-        {cv_content}
-
-        Template HTML:
-        {template}"""
+                    "content": f" Tu es un expert en génération de CV professionnel. Je vais te donner un CV en markdown et un template HTML moderne.
+                
+                **CV en Markdown ({cv_filename}) :**
+                ```markdown
+                {cv_content}
+                ```
+                
+                **Template HTML moderne :**
+                ```html
+                {template_content}
+                ```
+                
+                **Instructions spécifiques :**
+                1. Intègre parfaitement le contenu markdown dans le template HTML
+                2. Convertis le markdown en HTML sémantique (h1, h2, p, ul, li, strong, em, etc.)
+                3. Respecte absolument la structure, les classes CSS et les styles du template
+                4. Assure-toi que les sections du CV s'adaptent aux zones prévues dans le template
+                5. Maintiens l'aspect moderne et professionnel du template
+                6. Génère un HTML valide et bien indenté
+                7. Préserve tous les styles CSS et la mise en page du template
+                
+                **Très important :** Réponds uniquement avec le code HTML final complet, sans explications, sans balises de code markdown, juste le HTML pur.
+                """"
                 }]
             )
             
