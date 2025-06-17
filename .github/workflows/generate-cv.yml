@@ -1,4 +1,4 @@
-name: Generate CV Release
+name: Generate Complete CV Release
 
 on:
   push:
@@ -19,12 +19,12 @@ jobs:
     - name: Install dependencies
       run: pip install anthropic
     
-    - name: Generate CVs
+    - name: Generate Complete CVs
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
         python << 'EOF'
-        import anthropic, os, glob
+        import anthropic, os, glob, re
         from pathlib import Path
         
         os.makedirs('Output', exist_ok=True)
@@ -40,12 +40,19 @@ jobs:
             
             cv_filename = Path(cv_file).stem
             
+            # Extraire les sections du markdown pour validation
+            sections = re.findall(r'^(#{1,6})\s+(.+)$', cv_content, re.MULTILINE)
+            section_names = [section[1] for section in sections]
+            
+            print(f"📄 Traitement {cv_file}")
+            print(f"📝 Sections détectées: {', '.join(section_names)}")
+            
             response = client.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=4000,
+                max_tokens=8000,  # Augmenté pour CV complets
                 messages=[{
                     "role": "user",
-                    "content": f"""Tu es un expert en génération de CV professionnel. Je vais te donner un CV en markdown et un template HTML moderne.
+                    "content": f"""Tu es un expert en génération de CV professionnel. MISSION CRITIQUE: Intégrer TOUTES les sections du CV markdown dans le template HTML.
                 
                 **CV en Markdown ({cv_filename}) :**
                 ```markdown
@@ -57,43 +64,106 @@ jobs:
                 {template_content}
                 ```
                 
-                **Instructions spécifiques :**
-                1. Intègre parfaitement le contenu markdown dans le template HTML
-                2. Convertis le markdown en HTML sémantique (h1, h2, p, ul, li, strong, em, etc.)
-                3. Respecte absolument la structure, les classes CSS et les styles du template
-                4. Assure-toi que les sections du CV s'adaptent aux zones prévues dans le template
-                5. Maintiens l'aspect moderne et professionnel du template
-                6. Génère un HTML valide et bien indenté
-                7. Préserve tous les styles CSS et la mise en page du template
-                8. L'ordre des sections sont identiques dans le fichier markdown et le fichier html
-                9. Assure toi que chaque section du fichier markdown est ajoutée dans le fichier html produit
+                **SECTIONS OBLIGATOIRES à inclure :**
+                {', '.join(section_names)}
                 
-                **Très important :** Réponds uniquement avec le code HTML final complet, sans explications, sans balises de code markdown, juste le HTML pur."""
+                **Instructions IMPÉRATIVES :**
+                1. OBLIGATION : Intègre TOUTES les sections listées ci-dessus
+                2. Convertis chaque section markdown en HTML sémantique
+                3. Respecte l'ordre exact des sections du markdown
+                4. Utilise la structure et les styles du template
+                5. Assure-toi que chaque titre (h1, h2, h3...) est présent
+                6. Inclus tout le contenu de chaque section (listes, paragraphes, liens)
+                7. Génère un HTML valide et bien formaté
+                8. VÉRIFICATION : Le HTML final doit contenir toutes les sections
+                
+                **TRÈS IMPORTANT :** 
+                - Si une section manque dans le HTML, c'est un ÉCHEC
+                - Réponds uniquement avec le HTML complet
+                - Aucune section ne doit être omise ou résumée
+                
+                HTML COMPLET :"""
                 }]
             )
             
             html = response.content[0].text.strip()
+            
+            # Nettoyage du contenu
             if html.startswith('```'):
                 html = html.split('```')[1].split('```')[0].strip()
                 if html.startswith('html'):
                     html = html[4:].strip()
             
+            # Validation : vérifier que toutes les sections sont présentes
+            missing_sections = []
+            for section_name in section_names:
+                if section_name.lower() not in html.lower():
+                    missing_sections.append(section_name)
+            
+            if missing_sections:
+                print(f"⚠️  ATTENTION: Sections potentiellement manquantes: {', '.join(missing_sections)}")
+                
+                # Tentative de récupération avec prompt plus spécifique
+                recovery_response = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=8000,
+                    messages=[{
+                        "role": "user",
+                        "content": f"""RÉCUPÉRATION URGENTE: Le HTML précédent manque ces sections: {', '.join(missing_sections)}
+                        
+                        Reprends le CV markdown et assure-toi d'inclure SPÉCIFIQUEMENT ces sections manquantes:
+                        
+                        CV Markdown:
+                        ```markdown
+                        {cv_content}
+                        ```
+                        
+                        Template HTML:
+                        ```html
+                        {template_content}
+                        ```
+                        
+                        Génère un HTML COMPLET avec TOUTES les sections, sans exception.
+                        Réponds uniquement avec le HTML final:"""
+                    }]
+                )
+                
+                html = recovery_response.content[0].text.strip()
+                if html.startswith('```'):
+                    html = html.split('```')[1].split('```')[0].strip()
+                    if html.startswith('html'):
+                        html = html[4:].strip()
+            
             output_file = f"Output/{cv_filename}.html"
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(html)
-            print(f"✅ {output_file}")
+            print(f"✅ {output_file} généré")
+            
+            # Validation finale
+            final_missing = []
+            for section_name in section_names:
+                if section_name.lower() not in html.lower():
+                    final_missing.append(section_name)
+            
+            if final_missing:
+                print(f"❌ ERREUR: Sections définitivement manquantes: {', '.join(final_missing)}")
+            else:
+                print(f"✅ Toutes les sections intégrées avec succès")
         EOF
     
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: cv-${{ github.run_number }}
-        name: "CV Release #${{ github.run_number }}"
+        tag_name: cv-complete-${{ github.run_number }}
+        name: "CV Complet #${{ github.run_number }}"
         body: |
-          🤖 CV générés automatiquement
+          🤖 CV complets générés avec validation des sections
           
           **Commit:** ${{ github.event.head_commit.message }}
-          **Date:** $(date)
+          **Améliorations:**
+          - Validation de toutes les sections
+          - Tokens augmentés (8000)
+          - Récupération automatique si sections manquantes
         files: Output/*.html
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
