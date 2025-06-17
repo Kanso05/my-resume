@@ -29,19 +29,17 @@ Système de génération automatique de CV utilisant GitHub Actions et l'API Cla
 
 ## ⚡ Déclenchement automatique
 
-### Modification d'un CV
+### Génération automatique de releases
 ```
-Modification → CV/Data_Architect.md
-Génération → Output/Data_Architect.html
-Commit → "🤖 Mise à jour automatique des CV"
+Commit → main
+Génération → Tous les CV 
+Release → Tag automatique avec CV téléchargeables
 ```
 
-### Modification du template
-```
-Modification → Template/Cv_modern.html
-Génération → Tous les CV dans Output/
-Commit → "🎨 Régénération automatique des CV suite à modification du template"
-```
+**Chaque commit génère :**
+- Une release avec tag unique `cv-{numéro}-{commit}`
+- Tous les CV HTML en assets téléchargeables
+- Description avec métadonnées du commit
 
 ## 🚀 Configuration
 
@@ -50,10 +48,14 @@ Commit → "🎨 Régénération automatique des CV suite à modification du tem
 2. Dans GitHub : **Settings** → **Secrets and variables** → **Actions**
 3. Ajoutez `ANTHROPIC_API_KEY` avec votre clé
 
-### 2. Activation du workflow
-Le workflow `.github/workflows/generate-cv.yml` se déclenche automatiquement sur :
-- Modifications dans `CV/*.md`
-- Modifications dans `Template/Cv_modern.html`
+### 2. Permissions GitHub Actions
+1. Repository → **Settings** → **Actions** → **General**
+2. Section "Workflow permissions" → **"Read and write permissions"**
+3. Cocher **"Allow GitHub Actions to create and approve pull requests"**
+4. **Save**
+
+### 3. Activation du workflow
+Le workflow `.github/workflows/generate-cv.yml` se déclenche automatiquement sur tous les commits dans `main` et génère des releases avec les CV.
 
 ## 📝 Format des CV (Markdown)
 
