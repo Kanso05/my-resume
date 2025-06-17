@@ -92,6 +92,8 @@ jobs:
                 ```html
                 {template_content}
                 ```
+                L'ordre des sections sont identiques dans le fichier markdown et le fichier html.
+                Assure toi que chaque section du fichier markdown est ajoutée dans le fichier html produit.
                 
                 **Instructions spécifiques :**
                 1. Intègre parfaitement le contenu markdown dans le template HTML
