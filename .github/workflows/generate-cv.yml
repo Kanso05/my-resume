@@ -34,7 +34,7 @@ jobs:
       id: changed-files
       run: |
         # Vérifier si le template a changé
-        TEMPLATE_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep "^Template/Cv_modern\.html$" || true)
+        TEMPLATE_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep ".html" || true)
         
         if [ -n "$TEMPLATE_CHANGED" ]; then
           echo "🎨 Template modifié - Génération de tous les CV"
@@ -45,7 +45,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
         else
           # Sinon, détecter uniquement les fichiers .md modifiés dans le répertoire CV/
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep "^CV/.*\.md$" || true)
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep ".md" || true)
           echo "📝 Fichiers CV modifiés: $CHANGED_FILES"
           
           if [ -n "$CHANGED_FILES" ]; then
