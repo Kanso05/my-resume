@@ -34,7 +34,7 @@ jobs:
       id: changed-files
       run: |
         # Vérifier si le template a changé
-        TEMPLATE_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^Template/Cv_modern\.html
+        TEMPLATE_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '.html')
     
     - name: Generate CV files with Claude
       if: steps.changed-files.outputs.changed_files != ''
