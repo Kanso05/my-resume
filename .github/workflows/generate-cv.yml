@@ -34,7 +34,7 @@ jobs:
       id: changed-files
       run: |
         # V√©rifier si le template a chang√©
-        TEMPLATE_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^Template/Cv_modern\.html
+        TEMPLATE_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep "^Template/Cv_modern\.html")
     
     - name: Generate CV files with Claude
       if: steps.changed-files.outputs.changed_files != ''
@@ -139,17 +139,17 @@ jobs:
         is_template_change = any('Template/' in f for f in file_list) or len([f for f in file_list if f.startswith('CV/')]) > 1
         
         if is_template_change:
-            print(f"Ìæ® R√©g√©n√©ration compl√®te suite √† modification du template")
-            print(f"Ì≥ù {len([f for f in file_list if f.endswith('.md')])} fichiers CV √† traiter:")
+            print(f"ÔøΩÔøΩÔøΩ R√©g√©n√©ration compl√®te suite √† modification du template")
+            print(f"ÔøΩÔøΩÔøΩ {len([f for f in file_list if f.endswith('.md')])} fichiers CV √† traiter:")
         else:
-            print(f"Ì≥ù Fichiers CV modifi√©s d√©tect√©s:")
+            print(f"ÔøΩÔøΩÔøΩ Fichiers CV modifi√©s d√©tect√©s:")
         
         for f in file_list:
             if f.endswith('.md'):
                 print(f"  - {f}")
         
         # Lire le template
-        print("Ì≥ñ Lecture du template...")
+        print("ÔøΩÔøΩÔøΩ Lecture du template...")
         template_content = read_file('Template/Cv_modern.html')
         if not template_content:
             print("‚ùå Impossible de lire le template")
@@ -162,7 +162,7 @@ jobs:
             if not cv_file.endswith('.md'):
                 continue
                 
-            print(f"\nÌ¥Ñ Traitement de {cv_file}...")
+            print(f"\nÔøΩÔøΩÔøΩ Traitement de {cv_file}...")
             
             # Lire le contenu du CV
             cv_content = read_file(cv_file)
@@ -174,7 +174,7 @@ jobs:
             cv_filename = Path(cv_file).stem  # Nom sans extension
             output_file = f"Output/{cv_filename}.html"
             
-            print(f"Ì≥Ñ G√©n√©ration: {cv_file} ‚Üí {output_file}")
+            print(f"ÔøΩÔøΩÔøΩ G√©n√©ration: {cv_file} ‚Üí {output_file}")
             
             # G√©n√©rer le CV avec Claude
             generated_html = generate_cv_with_claude(cv_content, template_content, cv_filename)
@@ -193,7 +193,7 @@ jobs:
                     print(f"‚úÖ {output_file} est d√©j√† √† jour")
                     needs_update = False
                 else:
-                    print(f"Ì¥Ñ {output_file} sera mis √† jour (contenu diff√©rent)")
+                    print(f"ÔøΩÔøΩÔøΩ {output_file} sera mis √† jour (contenu diff√©rent)")
             else:
                 print(f"‚ú® Cr√©ation de {output_file}")
             
@@ -206,9 +206,9 @@ jobs:
         if files_generated:
             with open('/tmp/files_generated.txt', 'w') as f:
                 f.write('\n'.join(files_generated))
-            print(f"\nÌæâ {len(files_generated)} fichier(s) CV g√©n√©r√©(s) !")
+            print(f"\nÔøΩÔøΩÔøΩ {len(files_generated)} fichier(s) CV g√©n√©r√©(s) !")
         else:
-            print("\nÌ≤° Aucun fichier √† mettre √† jour")
+            print("\nÔøΩÔøΩÔøΩ Aucun fichier √† mettre √† jour")
         EOF
     
     - name: Commit and push changes
@@ -234,14 +234,14 @@ jobs:
             
             echo "‚úÖ Changements committ√©s et push√©s avec succ√®s !"
           else
-            echo "Ì≤° Aucun changement √† committer"
+            echo "ÔøΩÔøΩÔøΩ Aucun changement √† committer"
           fi
         else
-          echo "Ì≤° Aucun fichier g√©n√©r√©"
+          echo "ÔøΩÔøΩÔøΩ Aucun fichier g√©n√©r√©"
         fi || true)
         
         if [ -n "$TEMPLATE_CHANGED" ]; then
-          echo "Ìæ® Template modifi√© - G√©n√©ration de tous les CV"
+          echo "ÔøΩÔøΩÔøΩ Template modifi√© - G√©n√©ration de tous les CV"
           # Si le template a chang√©, traiter tous les fichiers CV
           ALL_CV_FILES=$(find CV -name "*.md" -type f | sort)
           echo "changed_files<<EOF" >> $GITHUB_OUTPUT
@@ -349,11 +349,11 @@ jobs:
             print("Aucun fichier CV modifi√©")
             exit(0)
         
-        print(f"Ì≥ù Fichiers CV modifi√©s d√©tect√©s:")
+        print(f"ÔøΩÔøΩÔøΩ Fichiers CV modifi√©s d√©tect√©s:")
         file_list = [f.strip() for f in changed_files.split('\n') if f.strip()]
         
         # Lire le template
-        print("Ì≥ñ Lecture du template...")
+        print("ÔøΩÔøΩÔøΩ Lecture du template...")
         template_content = read_file('Template/Cv_modern.html')
         if not template_content:
             print("‚ùå Impossible de lire le template")
@@ -366,7 +366,7 @@ jobs:
             if not cv_file.endswith('.md'):
                 continue
                 
-            print(f"\nÌ¥Ñ Traitement de {cv_file}...")
+            print(f"\nÔøΩÔøΩÔøΩ Traitement de {cv_file}...")
             
             # Lire le contenu du CV
             cv_content = read_file(cv_file)
@@ -378,7 +378,7 @@ jobs:
             cv_filename = Path(cv_file).stem  # Nom sans extension
             output_file = f"Output/{cv_filename}.html"
             
-            print(f"Ì≥Ñ G√©n√©ration: {cv_file} ‚Üí {output_file}")
+            print(f"ÔøΩÔøΩÔøΩ G√©n√©ration: {cv_file} ‚Üí {output_file}")
             
             # G√©n√©rer le CV avec Claude
             generated_html = generate_cv_with_claude(cv_content, template_content, cv_filename)
@@ -397,7 +397,7 @@ jobs:
                     print(f"‚úÖ {output_file} est d√©j√† √† jour")
                     needs_update = False
                 else:
-                    print(f"Ì¥Ñ {output_file} sera mis √† jour (contenu diff√©rent)")
+                    print(f"ÔøΩÔøΩÔøΩ {output_file} sera mis √† jour (contenu diff√©rent)")
             else:
                 print(f"‚ú® Cr√©ation de {output_file}")
             
@@ -410,9 +410,9 @@ jobs:
         if files_generated:
             with open('/tmp/files_generated.txt', 'w') as f:
                 f.write('\n'.join(files_generated))
-            print(f"\nÌæâ {len(files_generated)} fichier(s) CV g√©n√©r√©(s) !")
+            print(f"\nÔøΩÔøΩÔøΩ {len(files_generated)} fichier(s) CV g√©n√©r√©(s) !")
         else:
-            print("\nÌ≤° Aucun fichier √† mettre √† jour")
+            print("\nÔøΩÔøΩÔøΩ Aucun fichier √† mettre √† jour")
         EOF
     
     - name: Commit and push changes
@@ -430,7 +430,7 @@ jobs:
             echo "$FILES_GENERATED" | xargs git add
             
             # Cr√©er le message de commit avec la liste des fichiers
-            COMMIT_MSG="Ì¥ñ Mise √† jour automatique des CV
+            COMMIT_MSG="ÔøΩÔøΩÔøΩ Mise √† jour automatique des CV
             
             Fichiers g√©n√©r√©s:
             $(echo "$FILES_GENERATED" | sed 's/^/- /')
@@ -443,12 +443,12 @@ jobs:
             
             echo "‚úÖ Changements committ√©s et push√©s avec succ√®s !"
           else
-            echo "Ì≤° Aucun changement √† committer"
+            echo "ÔøΩÔøΩÔøΩ Aucun changement √† committer"
           fi
         else
-          echo "Ì≤° Aucun fichier g√©n√©r√©"
+          echo "ÔøΩÔøΩÔøΩ Aucun fichier g√©n√©r√©"
         fi || true)
-          echo "Ì≥ù Fichiers CV modifi√©s: $CHANGED_FILES"
+          echo "ÔøΩÔøΩÔøΩ Fichiers CV modifi√©s: $CHANGED_FILES"
           
           if [ -n "$CHANGED_FILES" ]; then
             echo "changed_files<<EOF" >> $GITHUB_OUTPUT
@@ -557,11 +557,11 @@ jobs:
             print("Aucun fichier CV modifi√©")
             exit(0)
         
-        print(f"Ì≥ù Fichiers CV modifi√©s d√©tect√©s:")
+        print(f"ÔøΩÔøΩÔøΩ Fichiers CV modifi√©s d√©tect√©s:")
         file_list = [f.strip() for f in changed_files.split('\n') if f.strip()]
         
         # Lire le template
-        print("Ì≥ñ Lecture du template...")
+        print("ÔøΩÔøΩÔøΩ Lecture du template...")
         template_content = read_file('Template/Cv_modern.html')
         if not template_content:
             print("‚ùå Impossible de lire le template")
@@ -574,7 +574,7 @@ jobs:
             if not cv_file.endswith('.md'):
                 continue
                 
-            print(f"\nÌ¥Ñ Traitement de {cv_file}...")
+            print(f"\nÔøΩÔøΩÔøΩ Traitement de {cv_file}...")
             
             # Lire le contenu du CV
             cv_content = read_file(cv_file)
@@ -586,7 +586,7 @@ jobs:
             cv_filename = Path(cv_file).stem  # Nom sans extension
             output_file = f"Output/{cv_filename}.html"
             
-            print(f"Ì≥Ñ G√©n√©ration: {cv_file} ‚Üí {output_file}")
+            print(f"ÔøΩÔøΩÔøΩ G√©n√©ration: {cv_file} ‚Üí {output_file}")
             
             # G√©n√©rer le CV avec Claude
             generated_html = generate_cv_with_claude(cv_content, template_content, cv_filename)
@@ -605,7 +605,7 @@ jobs:
                     print(f"‚úÖ {output_file} est d√©j√† √† jour")
                     needs_update = False
                 else:
-                    print(f"Ì¥Ñ {output_file} sera mis √† jour (contenu diff√©rent)")
+                    print(f"ÔøΩÔøΩÔøΩ {output_file} sera mis √† jour (contenu diff√©rent)")
             else:
                 print(f"‚ú® Cr√©ation de {output_file}")
             
@@ -618,9 +618,9 @@ jobs:
         if files_generated:
             with open('/tmp/files_generated.txt', 'w') as f:
                 f.write('\n'.join(files_generated))
-            print(f"\nÌæâ {len(files_generated)} fichier(s) CV g√©n√©r√©(s) !")
+            print(f"\nÔøΩÔøΩÔøΩ {len(files_generated)} fichier(s) CV g√©n√©r√©(s) !")
         else:
-            print("\nÌ≤° Aucun fichier √† mettre √† jour")
+            print("\nÔøΩÔøΩÔøΩ Aucun fichier √† mettre √† jour")
         EOF
     
     - name: Commit and push changes
@@ -638,7 +638,7 @@ jobs:
             echo "$FILES_GENERATED" | xargs git add
             
             # Cr√©er le message de commit avec la liste des fichiers
-            COMMIT_MSG="Ì¥ñ Mise √† jour automatique des CV
+            COMMIT_MSG="ÔøΩÔøΩÔøΩ Mise √† jour automatique des CV
             
             Fichiers g√©n√©r√©s:
             $(echo "$FILES_GENERATED" | sed 's/^/- /')
@@ -651,15 +651,15 @@ jobs:
             
             echo "‚úÖ Changements committ√©s et push√©s avec succ√®s !"
           else
-            echo "Ì≤° Aucun changement √† committer"
+            echo "ÔøΩÔøΩÔøΩ Aucun changement √† committer"
           fi
         else
-          echo "Ì≤° Aucun fichier g√©n√©r√©"
+          echo "ÔøΩÔøΩÔøΩ Aucun fichier g√©n√©r√©"
         fi || true)
             
             if [ -n "$TEMPLATE_CHANGED" ]; then
               # Changement de template
-              COMMIT_MSG="Ìæ® R√©g√©n√©ration automatique des CV suite √† modification du template
+              COMMIT_MSG="ÔøΩÔøΩÔøΩ R√©g√©n√©ration automatique des CV suite √† modification du template
             
             Template mis √† jour: Template/Cv_modern.html
             Fichiers r√©g√©n√©r√©s:
@@ -668,7 +668,7 @@ jobs:
             G√©n√©r√© le $(date '+%Y-%m-%d √† %H:%M:%S')"
             else
               # Changement de CV
-              COMMIT_MSG="Ì¥ñ Mise √† jour automatique des CV
+              COMMIT_MSG="ÔøΩÔøΩÔøΩ Mise √† jour automatique des CV
             
             Fichiers g√©n√©r√©s:
             $(echo "$FILES_GENERATED" | sed 's/^/- /')
@@ -682,14 +682,14 @@ jobs:
             
             echo "‚úÖ Changements committ√©s et push√©s avec succ√®s !"
           else
-            echo "Ì≤° Aucun changement √† committer"
+            echo "ÔøΩÔøΩÔøΩ Aucun changement √† committer"
           fi
         else
-          echo "Ì≤° Aucun fichier g√©n√©r√©"
+          echo "ÔøΩÔøΩÔøΩ Aucun fichier g√©n√©r√©"
         fi || true)
         
         if [ -n "$TEMPLATE_CHANGED" ]; then
-          echo "Ìæ® Template modifi√© - G√©n√©ration de tous les CV"
+          echo "ÔøΩÔøΩÔøΩ Template modifi√© - G√©n√©ration de tous les CV"
           # Si le template a chang√©, traiter tous les fichiers CV
           ALL_CV_FILES=$(find CV -name "*.md" -type f | sort)
           echo "changed_files<<EOF" >> $GITHUB_OUTPUT
@@ -797,11 +797,11 @@ jobs:
             print("Aucun fichier CV modifi√©")
             exit(0)
         
-        print(f"Ì≥ù Fichiers CV modifi√©s d√©tect√©s:")
+        print(f"ÔøΩÔøΩÔøΩ Fichiers CV modifi√©s d√©tect√©s:")
         file_list = [f.strip() for f in changed_files.split('\n') if f.strip()]
         
         # Lire le template
-        print("Ì≥ñ Lecture du template...")
+        print("ÔøΩÔøΩÔøΩ Lecture du template...")
         template_content = read_file('Template/Cv_modern.html')
         if not template_content:
             print("‚ùå Impossible de lire le template")
@@ -814,7 +814,7 @@ jobs:
             if not cv_file.endswith('.md'):
                 continue
                 
-            print(f"\nÌ¥Ñ Traitement de {cv_file}...")
+            print(f"\nÔøΩÔøΩÔøΩ Traitement de {cv_file}...")
             
             # Lire le contenu du CV
             cv_content = read_file(cv_file)
@@ -826,7 +826,7 @@ jobs:
             cv_filename = Path(cv_file).stem  # Nom sans extension
             output_file = f"Output/{cv_filename}.html"
             
-            print(f"Ì≥Ñ G√©n√©ration: {cv_file} ‚Üí {output_file}")
+            print(f"ÔøΩÔøΩÔøΩ G√©n√©ration: {cv_file} ‚Üí {output_file}")
             
             # G√©n√©rer le CV avec Claude
             generated_html = generate_cv_with_claude(cv_content, template_content, cv_filename)
@@ -845,7 +845,7 @@ jobs:
                     print(f"‚úÖ {output_file} est d√©j√† √† jour")
                     needs_update = False
                 else:
-                    print(f"Ì¥Ñ {output_file} sera mis √† jour (contenu diff√©rent)")
+                    print(f"ÔøΩÔøΩÔøΩ {output_file} sera mis √† jour (contenu diff√©rent)")
             else:
                 print(f"‚ú® Cr√©ation de {output_file}")
             
@@ -858,9 +858,9 @@ jobs:
         if files_generated:
             with open('/tmp/files_generated.txt', 'w') as f:
                 f.write('\n'.join(files_generated))
-            print(f"\nÌæâ {len(files_generated)} fichier(s) CV g√©n√©r√©(s) !")
+            print(f"\nÔøΩÔøΩÔøΩ {len(files_generated)} fichier(s) CV g√©n√©r√©(s) !")
         else:
-            print("\nÌ≤° Aucun fichier √† mettre √† jour")
+            print("\nÔøΩÔøΩÔøΩ Aucun fichier √† mettre √† jour")
         EOF
     
     - name: Commit and push changes
@@ -878,7 +878,7 @@ jobs:
             echo "$FILES_GENERATED" | xargs git add
             
             # Cr√©er le message de commit avec la liste des fichiers
-            COMMIT_MSG="Ì¥ñ Mise √† jour automatique des CV
+            COMMIT_MSG="ÔøΩÔøΩÔøΩ Mise √† jour automatique des CV
             
             Fichiers g√©n√©r√©s:
             $(echo "$FILES_GENERATED" | sed 's/^/- /')
@@ -891,12 +891,12 @@ jobs:
             
             echo "‚úÖ Changements committ√©s et push√©s avec succ√®s !"
           else
-            echo "Ì≤° Aucun changement √† committer"
+            echo "ÔøΩÔøΩÔøΩ Aucun changement √† committer"
           fi
         else
-          echo "Ì≤° Aucun fichier g√©n√©r√©"
+          echo "ÔøΩÔøΩÔøΩ Aucun fichier g√©n√©r√©"
         fi || true)
-          echo "Ì≥ù Fichiers CV modifi√©s: $CHANGED_FILES"
+          echo "ÔøΩÔøΩÔøΩ Fichiers CV modifi√©s: $CHANGED_FILES"
           
           if [ -n "$CHANGED_FILES" ]; then
             echo "changed_files<<EOF" >> $GITHUB_OUTPUT
@@ -1005,11 +1005,11 @@ jobs:
             print("Aucun fichier CV modifi√©")
             exit(0)
         
-        print(f"Ì≥ù Fichiers CV modifi√©s d√©tect√©s:")
+        print(f"ÔøΩÔøΩÔøΩ Fichiers CV modifi√©s d√©tect√©s:")
         file_list = [f.strip() for f in changed_files.split('\n') if f.strip()]
         
         # Lire le template
-        print("Ì≥ñ Lecture du template...")
+        print("ÔøΩÔøΩÔøΩ Lecture du template...")
         template_content = read_file('Template/Cv_modern.html')
         if not template_content:
             print("‚ùå Impossible de lire le template")
@@ -1022,7 +1022,7 @@ jobs:
             if not cv_file.endswith('.md'):
                 continue
                 
-            print(f"\nÌ¥Ñ Traitement de {cv_file}...")
+            print(f"\nÔøΩÔøΩÔøΩ Traitement de {cv_file}...")
             
             # Lire le contenu du CV
             cv_content = read_file(cv_file)
@@ -1034,7 +1034,7 @@ jobs:
             cv_filename = Path(cv_file).stem  # Nom sans extension
             output_file = f"Output/{cv_filename}.html"
             
-            print(f"Ì≥Ñ G√©n√©ration: {cv_file} ‚Üí {output_file}")
+            print(f"ÔøΩÔøΩÔøΩ G√©n√©ration: {cv_file} ‚Üí {output_file}")
             
             # G√©n√©rer le CV avec Claude
             generated_html = generate_cv_with_claude(cv_content, template_content, cv_filename)
@@ -1053,7 +1053,7 @@ jobs:
                     print(f"‚úÖ {output_file} est d√©j√† √† jour")
                     needs_update = False
                 else:
-                    print(f"Ì¥Ñ {output_file} sera mis √† jour (contenu diff√©rent)")
+                    print(f"ÔøΩÔøΩÔøΩ {output_file} sera mis √† jour (contenu diff√©rent)")
             else:
                 print(f"‚ú® Cr√©ation de {output_file}")
             
@@ -1066,9 +1066,9 @@ jobs:
         if files_generated:
             with open('/tmp/files_generated.txt', 'w') as f:
                 f.write('\n'.join(files_generated))
-            print(f"\nÌæâ {len(files_generated)} fichier(s) CV g√©n√©r√©(s) !")
+            print(f"\nÔøΩÔøΩÔøΩ {len(files_generated)} fichier(s) CV g√©n√©r√©(s) !")
         else:
-            print("\nÌ≤° Aucun fichier √† mettre √† jour")
+            print("\nÔøΩÔøΩÔøΩ Aucun fichier √† mettre √† jour")
         EOF
     
     - name: Commit and push changes
@@ -1086,7 +1086,7 @@ jobs:
             echo "$FILES_GENERATED" | xargs git add
             
             # Cr√©er le message de commit avec la liste des fichiers
-            COMMIT_MSG="Ì¥ñ Mise √† jour automatique des CV
+            COMMIT_MSG="ÔøΩÔøΩÔøΩ Mise √† jour automatique des CV
             
             Fichiers g√©n√©r√©s:
             $(echo "$FILES_GENERATED" | sed 's/^/- /')
@@ -1099,8 +1099,8 @@ jobs:
             
             echo "‚úÖ Changements committ√©s et push√©s avec succ√®s !"
           else
-            echo "Ì≤° Aucun changement √† committer"
+            echo "ÔøΩÔøΩÔøΩ Aucun changement √† committer"
           fi
         else
-          echo "Ì≤° Aucun fichier g√©n√©r√©"
+          echo "ÔøΩÔøΩÔøΩ Aucun fichier g√©n√©r√©"
         fi
