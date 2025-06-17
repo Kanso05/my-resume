@@ -31,7 +31,7 @@ En tant qu'architecte de données, j'apporte une valeur ajoutée significative a
 
 <!-- pagebreak -->
 
-## MES EXPERTISES
+## 💼 MES EXPERTISES
 
 ### Fonctions
 - Architecte de données
@@ -58,7 +58,7 @@ En tant qu'architecte de données, j'apporte une valeur ajoutée significative a
 
 <!-- pagebreak -->
 
-## SOMMAIRE DES RÉALISATIONS
+## 🛠️ SOMMAIRE DES RÉALISATIONS
 
 | N° | Intitulé                                                                        | De :               | À :                | Société                          | Fonction                                        | Durée | Envergure   |
 |----|---------------------------------------------------------------------------------|--------------------|--------------------|---------------------------------|-------------------------------------------------|-------|-------------|
@@ -79,16 +79,16 @@ En tant qu'architecte de données, j'apporte une valeur ajoutée significative a
 
 <!-- pagebreak -->
 
-## MES RÉALISATION EN DÉTAILLÉES 
+## 🛠️ MES RÉALISATION EN DÉTAILLÉES 
 
 ### 14 - Analyse BI  Backend 
 
 **Société :** BENEVA  
 **De :** Mars 2023  
 **À :** aujourd'hui (27 mois)  
-**Titre Emploi :** Analyste BI Backend  
+**Titre Emploi :** Analyste Backend en Intelligence d'affaire.
 **Emplacement :** Canada  
-**Environnement technologique :** Snowflake, Data Vault 2.0, DWA (Data Warehouse Automation), SQL, Python, Pentaho, Sunopsis, Azure DevOps, Git  
+**Environnement technologique :** Snowflake, Data Vault 2.0, DWA (Data Warehouse Automation), SQL, Python,Talend 
 **Employeur :** Momentum Technologies
 
 **Description du rôle :**
