@@ -95,8 +95,8 @@ jobs:
               COMMIT_MSG="🤖 Mise à jour automatique des CV
             
             Fichiers générés:
-            $(echo "$FILES_GENERATED" | sed 's/^/- /')
-            
+            $(echo "$FILES_GENERATED" | sed 's/^/- /') 
+            $(echo "$FILES_GENERATED" | sed 's/^/- /') > /tmp/files_generated.txt
             Généré le $(date '+%Y-%m-%d à %H:%M:%S')"
             fi
             
