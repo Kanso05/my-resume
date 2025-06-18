@@ -87,7 +87,7 @@ def generate_cv_with_claude(cv_content, template_content, cv_filename, api_key):
         # Appel Claude avec streaming pour CV longs
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=32000,
+            max_tokens=16000,
             stream=True,
             messages=[{
                 "role": "user",
